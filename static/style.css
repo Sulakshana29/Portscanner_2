@@ -1,0 +1,16 @@
+/* Minimal styling for the dashboard */
+body { font-family: Arial, Helvetica, sans-serif; background: #f7f9fb; color: #222; }
+.container { max-width: 900px; margin: 36px auto; background: #fff; padding: 20px; box-shadow: 0 6px 20px rgba(0,0,0,0.06);} 
+h1 { margin-top: 0; }
+.form { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 16px; }
+.form input[type="text"] { padding: 8px; font-size: 14px; }
+.form button { padding: 10px 16px; background: #2b7cff; color: #fff; border: none; cursor: pointer; }
+.table { width: 100%; border-collapse: collapse; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px; border-bottom: 1px solid #eee; }
+tr.open { background: #e8fff0; }
+tr.closed { background: #fff; }
+.flash { padding: 8px; margin: 8px 0; border-radius: 4px; }
+.flash.warning { background: #fff4e5; }
+.flash.danger { background: #ffe8e8; }
+footer { margin-top: 20px; font-size: 13px; color: #666; }
