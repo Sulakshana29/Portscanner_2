@@ -1,14 +1,7 @@
-"""scanner.py
-Small, reusable port-scanning utilities.
+"""Lightweight TCP-connect port scanner utilities.
 
-Functions:
-- scan_port(host, port, timeout): attempts a TCP connect and returns
-    (port, is_open, service)
-- scan_ports(host, ports, timeout, max_workers): concurrently scans a
-    list of ports and returns a dict of results
-
-This module intentionally avoids raw packet manipulation and uses plain
-TCP connect calls so it works without elevated privileges.
+Uses blocking TCP connect calls (no raw sockets) and a thread pool for
+concurrency. Intended for local/lab testing.
 """
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import socket
@@ -35,10 +28,8 @@ COMMON_SERVICES = {
     8080: "http-proxy",
 }
 
-# Optional enforcement: if PORTSCANNER_ALLOWED_NETWORKS env var is set to a
-# comma-separated list of CIDRs (e.g. "127.0.0.1/32,10.22.163.177/32"), then
-# the scanner will refuse to connect to hosts that don't resolve into those
-# networks. Leave unset to disable this protection.
+# Optional: set PORTSCANNER_ALLOWED_NETWORKS to comma-separated CIDRs to
+# restrict which targets the scanner will attempt.
 _ENV_ALLOWED = os.environ.get("PORTSCANNER_ALLOWED_NETWORKS")
 if _ENV_ALLOWED:
     try:
@@ -54,11 +45,10 @@ else:
 
 
 def _host_allowed(host: str) -> bool:
-    """Return True if all resolved IPs for `host` are inside ALLOWED_NETWORKS.
+    """Return True if resolved IPs for host are within ALLOWED_NETWORKS.
 
-    If ALLOWED_NETWORKS is empty, enforcement is disabled and the function
-    returns True.
-    """
+If ALLOWED_NETWORKS is empty enforcement is disabled.
+"""
     if not ALLOWED_NETWORKS:
         return True
     try:
@@ -89,13 +79,11 @@ def scan_port(
         - Caller should handle exceptions if they want to treat them
             differently.
     """
-    # Enforce host allowlist at scanner layer if configured via env var.
+    # Enforce allowlist if configured.
     if not _host_allowed(host):
-        raise PermissionError(f"Host {host} is not inside allowed networks")
+        raise PermissionError(f"Host {host} is not allowed")
 
     try:
-        # create_connection attempts to connect; on success we immediately
-        # close the socket.
         sock = socket.create_connection((host, port), timeout=timeout)
         sock.close()
         try:

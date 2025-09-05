@@ -1,11 +1,4 @@
-"""Flask web app for the Port Scanner Dashboard.
-
-Routes:
-- GET / : show form
-- POST /scan : perform scan and show results
-
-This file wires the web UI (templates) to the scanner utilities.
-"""
+"""Flask web app for a small TCP-connect port scanner dashboard."""
 from flask import Flask, render_template, request, redirect, url_for, flash
 import socket
 import scanner
@@ -14,22 +7,17 @@ import os
 from typing import List
 
 app = Flask(__name__)
-# NOTE: For real deployments move this to an env var and keep secret.
+# For demo only; use a real secret in production.
 app.secret_key = "dev-secret"
 
-# Restrict scanning to these IPs/hostnames or networks only. You can add
-# single IPs as /32 networks or full CIDRs. If BLOCKED_NETWORKS is set
-# (see below) the app will use the blocklist mode which allows all hosts
-# except those in BLOCKED_NETWORKS.
+# Default allowlist (used when no blocklist is configured)
 ALLOWED_NETWORKS = [
     ipaddress.ip_network("127.0.0.1/32"),
     ipaddress.ip_network("10.22.163.177/32"),
 ]
 
-# Optional blocklist mode: if you set the environment variable
-# PORTSCANNER_BLOCKED_NETWORKS to a comma-separated list of CIDRs, the
-# app will deny scans for any target resolving into those CIDRs. Example:
-# PORTSCANNER_BLOCKED_NETWORKS='8.8.8.8/32,203.0.113.0/24'
+# Optional blocklist: set PORTSCANNER_BLOCKED_NETWORKS to CIDRs to deny
+# scanning targets that resolve into those ranges.
 _BLOCK_ENV = os.environ.get("PORTSCANNER_BLOCKED_NETWORKS")
 if _BLOCK_ENV:
     try:
