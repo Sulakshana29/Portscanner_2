@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Agent / tooling config
+.agents/
+.gemini/
+
+# Test artefacts
+.pytest_cache/
+htmlcov/
+.coverage
+tests/__pycache__/
+
+# Secrets / local config
+.env
+*.env

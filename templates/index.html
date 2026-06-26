@@ -2,58 +2,222 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Port Scanner Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="NetScan Pro – Multi-threaded TCP port scanner with service detection, banner grabbing, and real-time results. Built with Python & Flask.">
+  <title>NetScan Pro – TCP Port Scanner</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <div class="container">
-    <h1>Port Scanner Dashboard</h1>
+<div id="app-root">
 
-    <form action="/scan" method="post" class="form">
-      <label>Hostname or IP</label>
-      <input type="text" name="host" placeholder="example.com or 10.0.0.1" value="{{ host or '' }}" required>
+  <!-- ── Header ── -->
+  <header id="site-header">
+    <div class="logo">
+      <div class="logo-icon">🛰</div>
+      <div>
+        <h1>NetScan Pro</h1>
+        <div class="logo-sub">TCP Port Scanner &amp; Service Detector</div>
+      </div>
+    </div>
+    <span class="header-badge">v2.0 · Flask · Python</span>
+  </header>
 
-      <label>Ports (comma or range). Leave empty for common ports</label>
-      <input type="text" name="ports" placeholder="22,80,443 or 20-1024" value="">
+  <!-- ── Main Column ── -->
+  <main id="main-col">
 
-      <label>Timeout (seconds)</label>
-      <input type="text" name="timeout" value="{{ timeout or '0.8' }}">
-
-      <button type="submit">Scan</button>
-    </form>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="messages">
+    <!-- Flash messages -->
+    <div id="flash-area" class="flash-area">
+      {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, msg in messages %}
           <div class="flash {{ category }}">{{ msg }}</div>
         {% endfor %}
+      {% endwith %}
+    </div>
+
+    <!-- Scan Form -->
+    <div class="card">
+      <div class="card-title">Configure Scan</div>
+      <form id="scan-form" autocomplete="off">
+
+        <div class="form-grid">
+          <!-- Host -->
+          <div class="form-group full-width">
+            <label for="host-input">Target Host / IP</label>
+            <input id="host-input" type="text" name="host"
+                   placeholder="127.0.0.1  or  192.168.1.1"
+                   value="{{ host or '' }}" required>
+          </div>
+
+          <!-- Ports -->
+          <div class="form-group full-width">
+            <label for="ports-input">Port Range &amp; Selection</label>
+            <input id="ports-input" type="text" name="ports"
+                   placeholder="22,80,443  or  20-1024  or  leave blank for quick scan"
+                   value="">
+            <div class="port-presets">
+              <button type="button" class="preset-btn" data-ports="21,22,23,25,53,80,110,143,443,445,3306,3389,8080">Quick (14 ports)</button>
+              <button type="button" class="preset-btn" data-ports="1-1024">Common (1–1024)</button>
+              <button type="button" class="preset-btn" data-ports="1-65535">Full (all 65535)</button>
+              <button type="button" class="preset-btn" data-ports="22,80,443,3306,5432,6379,27017,9200">Databases+Web</button>
+            </div>
+          </div>
+
+          <!-- Timeout -->
+          <div class="form-group">
+            <label for="timeout-input">Timeout (seconds)</label>
+            <input id="timeout-input" type="text" name="timeout"
+                   placeholder="0.8" value="{{ timeout or '0.8' }}">
+          </div>
+
+          <!-- Banner grab toggle -->
+          <div class="form-group" style="justify-content:flex-end; padding-bottom:4px;">
+            <label for="banner-check" style="cursor:pointer; display:flex; align-items:center; gap:8px; margin-top:auto;">
+              <input id="banner-check" type="checkbox" checked
+                     style="width:16px;height:16px;accent-color:var(--neon);cursor:pointer;">
+              Grab service banners
+            </label>
+          </div>
         </div>
-      {% endif %}
-    {% endwith %}
 
-    {% if results %}
-      <h2>Results for {{ host }}</h2>
-      <table>
-        <thead>
-          <tr><th>Port</th><th>Open?</th><th>Service</th></tr>
-        </thead>
-        <tbody>
-        {% for port, info in results.items() %}
-          <tr class="{{ 'open' if info.open else 'closed' }}">
-            <td>{{ port }}</td>
-            <td>{{ 'Yes' if info.open else 'No' }}</td>
-            <td>{{ info.service or '-' }}</td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
-    {% endif %}
+        <button id="btn-scan" type="submit" class="btn-scan">⚡ Start Scan</button>
+      </form>
+    </div>
 
-    <footer>
-      <p>Simple Flask port scanner for learning and testing on allowed targets only.</p>
-    </footer>
-  </div>
+    <!-- Progress -->
+    <div id="progress-section" class="card">
+      <div class="card-title">Scan Progress</div>
+      <div class="progress-header">
+        <span>Scanning ports…</span>
+        <span id="progress-label">0%</span>
+      </div>
+      <div class="progress-track">
+        <div id="progress-fill" class="progress-fill"></div>
+      </div>
+      <div class="progress-stats">
+        <div class="p-stat">Scanned: <span id="progress-done">0</span> / <span id="progress-total">?</span></div>
+        <div class="p-stat">Open: <span id="progress-open">0</span></div>
+        <div class="p-stat">Elapsed: <span id="progress-secs">0.0s</span></div>
+      </div>
+    </div>
+
+    <!-- Stats Summary -->
+    <div id="stats-bar">
+      <div class="stat-chip chip-total">
+        <div id="stat-total" class="stat-chip-value">—</div>
+        <div class="stat-chip-label">Total Ports</div>
+      </div>
+      <div class="stat-chip chip-open">
+        <div id="stat-open" class="stat-chip-value">—</div>
+        <div class="stat-chip-label">Open</div>
+      </div>
+      <div class="stat-chip chip-closed">
+        <div id="stat-closed" class="stat-chip-value">—</div>
+        <div class="stat-chip-label">Closed</div>
+      </div>
+      <div class="stat-chip chip-time">
+        <div id="stat-time" class="stat-chip-value">—</div>
+        <div class="stat-chip-label">Duration</div>
+      </div>
+    </div>
+
+    <!-- Results Table -->
+    <div id="results-section" class="card">
+      <div class="results-toolbar">
+        <span id="results-title" class="results-title">Results</span>
+        <button id="filter-all"    class="filter-btn active" data-filter="all">All</button>
+        <button id="filter-open"   class="filter-btn"        data-filter="open">Open</button>
+        <button id="filter-closed" class="filter-btn"        data-filter="closed">Closed</button>
+        <a id="btn-export-csv"  class="export-btn hidden" href="#" download>⬇ CSV</a>
+        <a id="btn-export-json" class="export-btn hidden" href="#" download>⬇ JSON</a>
+      </div>
+      <div class="results-table-wrap">
+        <table id="results-table">
+          <thead>
+            <tr>
+              <th>Port</th>
+              <th>Status</th>
+              <th>Service</th>
+              <th>Version / Banner</th>
+              <th>OS Hint</th>
+              <th>Risk</th>
+            </tr>
+          </thead>
+          <tbody id="results-tbody">
+            <tr>
+              <td colspan="6" class="no-results">Run a scan to see results here.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── Sidebar ── -->
+  <aside id="sidebar">
+
+    <!-- Scan History -->
+    <div class="card">
+      <div class="card-title">Scan History</div>
+      <div id="history-list" class="history-list">
+        {% if history %}
+          {% for h in history %}
+          <div class="history-item">
+            <div class="history-host">{{ h.host }}</div>
+            <div class="history-meta">
+              <span class="h-open">{{ h.open }} open</span>
+              <span>{{ h.total }} ports</span>
+              <span>{{ h.elapsed }}s</span>
+              <span>{{ h.ts }}</span>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p style="font-size:0.75rem;color:var(--text-dim);text-align:center">No scans yet</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Tips -->
+    <div class="card">
+      <div class="card-title">Tips</div>
+      <div class="tip-box">
+        <strong>⚡ Quick Start</strong>
+        Scan <code>127.0.0.1</code> to test your local machine. Use the preset buttons to load common port sets instantly.
+      </div>
+      <div class="tip-box" style="margin-top:12px">
+        <strong>🔍 Banner Grabbing</strong>
+        Enable banners to detect SSH versions, HTTP servers, database engines, and more.
+      </div>
+      <div class="tip-box" style="margin-top:12px">
+        <strong>⚠️ Risk Levels</strong>
+        <span style="color:var(--risk-high)">High</span> = exposed DB/RDP/Telnet &nbsp;
+        <span style="color:var(--risk-medium)">Medium</span> = HTTP/SMTP/LDAP &nbsp;
+        <span style="color:var(--risk-low)">Low</span> = HTTPS/other
+      </div>
+    </div>
+
+    <!-- Tech Stack -->
+    <div class="card">
+      <div class="card-title">Tech Stack</div>
+      <div class="tip-box">
+        <strong>🐍 Backend</strong>
+        Python 3 · Flask · <code>concurrent.futures</code> · Socket API
+      </div>
+      <div class="tip-box" style="margin-top:12px">
+        <strong>🌐 Frontend</strong>
+        Vanilla JS · CSS3 · Fetch API · Async polling
+      </div>
+      <div class="tip-box" style="margin-top:12px">
+        <strong>📄 Export</strong>
+        CSV &amp; JSON reports — click ⬇ CSV or ⬇ JSON after a scan
+      </div>
+    </div>
+
+  </aside>
+
+</div><!-- #app-root -->
+
+<script src="/static/scanner.js"></script>
 </body>
 </html>
